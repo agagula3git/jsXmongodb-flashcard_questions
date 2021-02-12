@@ -1,6 +1,6 @@
 const MongoClient = require('mongodb').MongoClient;
 const ObjectId = require('mongodb').ObjectID;
-const dbName = "flashcards";
+const dbName = "jsXmongodb";
 
 const uri = "mongodb://localhost:27017";
 
