@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible", content="ie-edge">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <link rel="stylesheet" href="index.css">
+
+</head>
+<body>
+    <div class="header">
+        <h2>Flashcards</h2>
+        <button name="add" id="add">Add Question</button>
+        <button name="close" id="x-btn">Close</button>
+    </div>
+    <div class=" row display">
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        $(document).ready(()=>{
+            const question = $("textarea#question").val();
+            const answer = $("textarea#answer").val();
+            const display = $(".display");
+
+            if(!document.getElementById('addblock')){
+                $('#x-btn').attr('disabled',true);
+            }
+            $('#add').on('click',(e)=>{
+                buildFlashcard();
+                $('button#x-btn').attr('disabled',false);
+                $('button#add').attr('disabled',true);
+            });
+
+            $('#x-btn').on('click',(e)=>{
+                console.log(e);
+                $('button#add').attr('disabled',true);
+                if(document.getElementById('addblock')){
+                    document.getElementById('addblock').remove();
+                }
+                $('button#add').attr('disabled',false);
+                $('#x-btn').attr('disabled',true);
+            });
+
+            $('.show-hide').on('click',()=>{
+                $('.card-text').toggle();
+            });
+
+            const buildFlashcard = ()=>{
+                var newDiv=document.createElement("div");
+                newDiv.setAttribute("id","addblock");
+                document.body.appendChild(newDiv);
+
+                var div = document.createElement('div');
+                div.className = "fblock";
+
+                var form = document.createElement('form');
+                var question = document.createElement('textarea');
+                var answer = document.createElement('textarea');
+                var subBtn = document.createElement("input");
+
+                setAttr(form,{"id":"form"});
+
+                form.onsubmit = (e)=>{
+                e.preventDefault();
+                var question = $('textarea#question').val();
+                var answer = $('textarea#answer').val();
+                fetch('/',{
+                    method : 'post',
+                    body : JSON.stringify({question : question, answer: answer}),
+                    headers : {
+                        "Content-Type" : "application/json; charset=utf-8"
+                    }
+                })
+                .then(res => res.json())
+                .then((data)=>{
+                    console.log(data);
+                    if(!data.error){
+                        if(data.result.ok == 1 && data.result.n == 1){
+                            let ids = buildIDS(data.document);
+                            display.append(buildTemplate(data.document,ids));
+                            
+                        }
+                    }
+                });
+                }
+                /*form.onsubmit = (e)=>{
+                    console.log(e);
+                    var question = $('textarea#question').val();
+                    var answer = $('textarea#answer').val();
+                    if(question === "" || answer === ""){
+                        alert('Question and Answer cannot be blank!');
+                    }else{
+                        $(e.currentTarget).attr('action','/');
+                        $(e.currentTarget).attr('method','post'); 
+                        return;
+                    }
+                    e.preventDefault();
+                };*/
+
+                setAttr(question,{"id":"question","placeholder":"Enter your question here..."});
+                setAttr(answer,{"id":"answer","placeholder":"Enter answer on your question..."});
+                setAttr(subBtn,{"type":"submit","id":"sub","value":"Save"});
+
+                var labelQuestion = document.createElement('label');
+                labelQuestion.setAttribute('for','question');
+                labelQuestion.innerHTML="Question:";
+                var labelAnswer = document.createElement('label');
+                labelAnswer.setAttribute('for','answer');
+                labelAnswer.innerHTML="Answer:";
+
+                form.appendChild(labelQuestion);
+                form.appendChild(question);
+                form.appendChild(labelAnswer);
+                form.appendChild(answer);
+                form.appendChild(subBtn);
+                addblock.append(form);
+                div.appendChild(form);
+                newDiv.appendChild(div);
+            }
+
+            function setAttr(element, attrs){
+                for(var key in attrs){
+                    element.setAttribute(key,attrs[key]);
+                }
+            }
+
+            const getFlashcards = ()=>{
+                fetch('/getFlashcards',{method: "get"})
+                .then((response)=> response.json())
+                .then((data)=>{
+                    console.log(data);
+                    displayFlashcards(data);
+                });
+            }
+
+            getFlashcards();
+
+            const buildIDS = (card)=>{
+                return{
+                    editID: "edit_" + card._id,
+                    deleteID: "delete_" + card._id,
+                    itemID: "item_" + card._id,
+                    questionID: "question_" + card._id,
+                    answerID: "answer_" + card._id
+                }
+            }
+            
+            const deleteCard = (card,ids)=>{
+                let delID = ids.deleteID;
+                let itemID = ids.itemID;
+                let deleteBtn = $(`#${delID}`);
+                deleteBtn.on('click',()=>{
+                    fetch(`/${card._id}`,{ method: "delete"})
+                    .then((response)=>response.json())
+                    .then((data)=>{
+                        if(data.ok == 1){
+                            $(`#${itemID}`).remove();
+                        }
+                    });
+                });
+            }
+
+            const editCard = (cardID,questionCard,answerCard,ids)=>{
+                let editID = ids.editID;
+                let itemID = ids.itemID;
+                let editBtn = $(`#${editID}`);
+                editBtn.on('click',()=>{
+                    fetch(`/${cardID}`,{
+                        method: "put",
+                        headers: {
+                            "Content-type" : "application/json; charset=utf-8"
+                        },
+                        body: JSON.stringfy({questionCard : question, answerCard : answer})
+                    })
+                    .then((response)=>response.json())
+                    .then((data)=>{
+                        if(data.ok == 1){
+                            data.forEach((card)=>{
+                                if(card._id === cardID){
+                                    $(`#${ids.questionID}`).html(card.question);
+                                    $(`#${ids.answerID}`).html(card.answer);
+                                }
+                            })
+                        }
+                    })
+                })
+            }
+
+            const buildTemplate = (card,ids)=>{
+                return `<div class="row" id="${ids.itemID}">
+                            <div class="col-sm-3">
+                                <div class="card border-dark mb-3 flashcard" style="width: 18rem;">
+                                    <div class="card-body">
+                                        <h5 class="card-title" id="${ids.questionID}">${card.question}</h5>
+                                        <p class="card-text" id="${ids.answerID}">${card.answer}</p>
+                                        <p class="show-hide">Show/Hide Answer</p>
+                                        <div class="dd-block">
+                                            <button type="button" class="btn btn-outline-success" id="${ids.editID}">Edit</button>
+                                            <button type="button" class="btn btn-outline-danger" id="${ids.deleteID}">Delete</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+            }
+            const displayFlashcards = (data)=>{
+                data.forEach((card)=>{
+                    let ids = buildIDS(card);
+                    display.append(buildTemplate(card,ids));
+                    editCard(card._id,card.question,card.answer,ids);
+                    deleteCard(card,ids);
+                })
+            }
+
+        })
+    </script>
+</body>
+</html>
